@@ -90,10 +90,14 @@ Sentence-Transformer and fine-tuned DistilBERT baselines on validation mAP@3.
 ## 13. Project Structure
 ```
 .
+├── app.py                                  # Streamlit web app (inference only)
+├── src/
+│   └── mcq_model.py                        # notebook-exact model + preprocessing (deployment)
+├── scripts/
+│   └── build_artifacts.py                  # one-time artifact builder (trains + saves model/vocab)
+├── artifacts/                              # trained model.pt + vocab.json + config.json (committed)
 ├── notebooks/
 │   └── dl-23f2004513-notebook-t22026.ipynb   # end-to-end notebook (EDA → model → submission)
-├── train.csv
-├── test.csv
 ├── requirements.txt
 └── README.md
 ```
@@ -113,7 +117,36 @@ pip install -r requirements.txt
    inference → submission generation.
 4. Submit the generated predictions file to the Kaggle competition leaderboard.
 
-## 16. Experiment Tracking
+## 16. Web App Deployment (Streamlit Community Cloud)
+
+The repo ships with a ready-to-deploy Streamlit app (`app.py`) that runs the trained
+from-scratch BiLSTM model **without retraining and without any Kaggle/W&B secrets**.
+
+### Local run
+```bash
+streamlit run app.py
+```
+
+### (Re)build the deployment artifacts
+The trained model and vocabulary are stored in `artifacts/` (`model.pt`, `vocab.json`,
+`config.json`) and are committed to the repo — the app loads them once at startup.
+To regenerate them from `train.csv` (same seed/epochs/hyperparameters as the notebook):
+
+```bash
+python scripts/build_artifacts.py --train train.csv --out artifacts
+```
+Running this is only needed if the model is retrained; `train.csv` itself is never committed.
+
+### Deploy to Streamlit Community Cloud
+1. Push this repo to GitHub (set the working directory to the repo root).
+2. Go to https://share.streamlit.io (or the Community Cloud dashboard).
+3. Click **Create app** → **Deploy from GitHub repo**.
+4. Select the repository, branch `main`, and main file path `app.py`.
+5. (Optional) Advanced settings → Python version 3.11 or newer. No secrets needed.
+6. Click **Deploy**. Cold start takes ~1–2 minutes (installs torch etc.); the model then
+   loads from `artifacts/` and the app is ready.
+
+## 17. Experiment Tracking
 Training runs, losses, and validation mAP@3 are logged to **Weights & Biases** (`wandb`).
 Set your `WANDB_API_KEY` before running the notebook, or log in interactively when
 prompted at the WandB setup cell.
